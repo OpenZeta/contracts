@@ -1,0 +1,1 @@
+# OpenZeta contracts and scripts for the THETA blockchain
