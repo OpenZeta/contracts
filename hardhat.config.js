@@ -15,5 +15,6 @@ module.exports = {
     sources: "./contracts",
     tests: "./tests",
     cache: "./cache",
+    artifacts: "./artifacts"
   },
 };
