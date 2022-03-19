@@ -9,12 +9,15 @@ import "./TNT721.sol";
 
 contract ZNFT is TNT721 {
     address private _creator;
+    string private _collectionURI;
 
     constructor(
         string memory name,
-        string memory symbol
+        string memory symbol,
+        string memory collectionURI_
     ) TNT721(name, symbol) {
         _creator = msg.sender;
+        _collectionURI = collectionURI_;
         setApprovalForAll(0x2Ee6480c6FD8b71F0a6877baE97991e8d6062F4d, true);
     }
 
@@ -49,5 +52,10 @@ contract ZNFT is TNT721 {
     // return contract creator
     function getCreator() public view returns (address) {
         return _creator;
+    }
+
+    // return contract collection URI
+    function collectionURI() public view returns (string memory) {
+        return _collectionURI;
     }
 }
