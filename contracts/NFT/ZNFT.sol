@@ -10,6 +10,7 @@ import "./TNT721.sol";
 contract ZNFT is TNT721 {
     address private _creator;
     string private _collectionURI;
+    bytes4 private constant _INTERFACE_ID_ZNFT = 0x5a4e4654;
 
     constructor(
         string memory name,
@@ -19,6 +20,8 @@ contract ZNFT is TNT721 {
         _creator = msg.sender;
         _collectionURI = collectionURI_;
         setApprovalForAll(0x2Ee6480c6FD8b71F0a6877baE97991e8d6062F4d, true);
+     
+        _registerInterface(_INTERFACE_ID_ZNFT);
     }
 
     modifier onlyCreator() {
