@@ -50,7 +50,7 @@ contract ZNFT is TNT721 {
     }
 
     // return contract creator
-    function getCreator() public view returns (address) {
+    function creator() public view returns (address) {
         return _creator;
     }
 
