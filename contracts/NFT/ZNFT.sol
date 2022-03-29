@@ -20,7 +20,7 @@ contract ZNFT is TNT721 {
         _creator = msg.sender;
         _collectionURI = collectionURI_;
         setApprovalForAll(0x2Ee6480c6FD8b71F0a6877baE97991e8d6062F4d, true);
-     
+
         _registerInterface(_INTERFACE_ID_ZNFT);
     }
 
@@ -41,14 +41,21 @@ contract ZNFT is TNT721 {
     }
 
     // Mint one token for sender
-    function mint(string memory uri) public onlyCreator {
+    function mint(string memory uri) external onlyCreator {
         mint(msg.sender, uri);
     }
 
     // Mint many tokens for address
-    function mint(address to, string[] memory uris) public onlyCreator {
+    function mint(address to, string[] memory uris) external onlyCreator {
         for (uint256 i = 0; i < uris.length; i++) {
             mint(to, uris[i]);
+        }
+    }
+
+    // Mint many tokens for sender
+    function mint(string[] memory uris) external onlyCreator {
+        for (uint256 i = 0; i < uris.length; i++) {
+            mint(msg.sender, uris[i]);
         }
     }
 

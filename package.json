@@ -1,11 +1,9 @@
 {
   "scripts": {
     "remixd": "remixd -s . -u https://remix.ethereum.org",
-    "compile": "hardhat compile",
+    "build": "hardhat compile",
     "deploy:ZNFT": "node scripts/deploy.js --artifact artifacts/contracts/NFT/ZNFT.sol/ZNFT.json --args \"['TestArgs','TARGS','collUrl']\"",
-    "sdeploy:ZNFT": "node scripts/deploy.js --artifact artifacts/contracts/NFT/ZNFT.sol/ZNFT.json --args \"['TestArgs','TARGS','collUrl']\" -S",
-    "deploy:ZMarket": "node scripts/deploy.js --artifact artifacts/contracts/Market/ZMarket.sol/ZMarket.json --args \"[4]\"",
-    "sdeploy:ZMarket": "node scripts/deploy.js --artifact artifacts/contracts/Market/ZMarket.sol/ZMarket.json --args \"[4]\" -S"
+    "deploy:ZMarket": "node scripts/deploy.js --artifact artifacts/contracts/Market/ZMarket.sol/ZMarket.json --args \"[]\""
   },
   "dependencies": {
     "@openzeppelin/contracts": "^4.5.0"

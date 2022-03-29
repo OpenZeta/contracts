@@ -25,16 +25,6 @@ async function deploy(artifact, args) {
   return result;
 }
 
-async function mint(add, artifact) {
-  const contract = new thetajs.Contract(add, artifact.abi, wallet);
-
-  const result = await contract.mint(
-    "0x2Ee6480c6FD8b71F0a6877baE97991e8d6062F4d",
-    "https://picsum.photos/seed/test/250"
-  );
-  return result;
-}
-
 async function main() {
   const artifact = await read_artifact(argv.artifact);
   const result = await deploy(artifact, argv.args);
@@ -45,9 +35,6 @@ async function main() {
                 Gas used:             ${result.gas_used}
   --------------------------------------------------------------------------------------------
   `);
-
-  const minted = await mint(result.contract_address, artifact);
-  console.log(minted);
 }
 
 main()

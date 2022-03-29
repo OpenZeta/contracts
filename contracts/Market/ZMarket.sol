@@ -1,127 +1,245 @@
 // SPDX-License-Identifier: MIT
+// Implements a TNT721 token marketplace using TFUEL as a currency
+
 pragma solidity ^0.8.12;
 
-import "@openzeppelin/contracts/utils/Counters.sol";
+import "../NFT/interfaces/ITNT721.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "../NFT/TNT721.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 
-contract ZMarket is ReentrancyGuard {
-    using Counters for Counters.Counter;
-    Counters.Counter private _items;
-    Counters.Counter private _soldItems;
+contract ZMarket is ReentrancyGuard, Ownable, Pausable {
+    // minimum price for a sale
+    uint256 public minPrice;
 
-    address payable _marketOwner;
+    // market fee percentage
+    uint8 public marketFee;
 
-    uint256 _minSalePrice = 1 wei; // minimum price for a sale to happen
-    uint8 _marketFee; // market fee percentage %
-
-    // interface to marketplace item
-    struct MarketplaceItem {
-        uint256 itemId;
-        address nftContract;
-        uint256 tokenId;
+    // interface of the marketplace item
+    struct Item {
         address payable seller;
+        address tokenContract;
+        uint256 tokenId;
         uint256 price;
-        bool sold;
+        bytes32 status; // Open, Sold, Cancelled
     }
 
-    mapping(uint256 => MarketplaceItem) private marketItemById;
+    // mapping of item id to item
+    mapping(uint256 => Item) private itemsById;
 
-    // declare a event for when a item is created on marketplace
-    event Sell(
-        uint256 indexed itemId,
-        address indexed nftContract,
-        uint256 indexed tokenId,
+    // mapping of seller to item
+    mapping(address => uint256[]) private itemsBySeller;
+
+    // mapping of seller to contract
+    mapping(address => uint256[]) private itemsByTokenContract;
+
+    // items counter
+    uint256 public itemsCounter;
+
+    // event if item is modified
+    event MarketChange(
+        uint256 id,
         address seller,
+        address tokenContract,
+        uint256 tokenId,
         uint256 price,
-        bool sold
+        bytes32 status
     );
 
-    // declare a event for when a item is sold on marketplace
-    event Buy(
-        uint256 indexed itemId,
-        address indexed nftContract,
-        uint256 indexed tokenId,
-        address owner,
-        uint256 price,
-        bool sold
-    );
-
-    constructor(uint8 marketFee_) {
-        _marketOwner = payable(msg.sender);
-        _marketFee = marketFee_;
+    constructor() {
+        itemsCounter = 0;
+        minPrice = 10 ether;
+        marketFee = 4;
     }
 
-    // returns the minimum sale price of the contract
-    function minSalePrice() public view returns (uint256) {
-        return _minSalePrice;
+    /**
+     * @dev Returns the details for a marketplace item.
+     */
+    function getItem(uint256 _id) external view returns (Item memory) {
+        return itemsById[_id];
     }
 
-    // returns the market fee percentage
-    function marketFee() public view returns (uint256) {
-        return _marketFee;
+    /**
+     * @dev Returns all items of an address
+     */
+    function getItemsOfAddress(address _addr)
+        external
+        view
+        returns (uint256[] memory)
+    {
+        return itemsBySeller[_addr];
     }
 
-    // places an item for sale on the marketplace
+    /**
+     * @dev Returns all items of a contract
+     */
+    function getItemsOfContract(address _addr)
+        external
+        view
+        returns (uint256[] memory)
+    {
+        return itemsByTokenContract[_addr];
+    }
+
+    /**
+     * @dev Put a TNT721 token for sale.
+     */
     function sell(
-        address nftContract,
+        address tokenContract,
         uint256 tokenId,
         uint256 price
-    ) public payable nonReentrant {
-        require(price > _minSalePrice, "Price must be at least 1 tfuel");
+    ) external nonReentrant whenNotPaused {
+        require(price > minPrice, "Price must be at least 10 tfuel");
 
-        _items.increment();
-        uint256 itemId = _items.current();
+        // put item in escrow
+        ITNT721(tokenContract).transferFrom(msg.sender, address(this), tokenId);
 
-        marketItemById[itemId] = MarketplaceItem(
-            itemId,
-            nftContract,
+        // add item to marketplace
+        itemsById[itemsCounter] = Item({
+            seller: payable(msg.sender),
+            tokenContract: tokenContract,
+            tokenId: tokenId,
+            price: price,
+            status: "Open"
+        });
+
+        // add item to seller
+        itemsBySeller[msg.sender].push(itemsCounter);
+
+        // add item to token contract
+        itemsByTokenContract[tokenContract].push(itemsCounter);
+
+        itemsCounter += 1;
+
+        // emit event
+        emit MarketChange(
+            itemsCounter - 1,
+            msg.sender,
+            tokenContract,
             tokenId,
-            payable(msg.sender),
             price,
-            false
+            "Open"
         );
-
-        ITNT721(nftContract).transferFrom(msg.sender, address(this), tokenId);
-
-        emit Sell(itemId, nftContract, tokenId, msg.sender, price, false);
     }
 
-    // creates the sale of a marketplace item
-    // transfers ownership of the item, as well as funds between parties
-    function buy(address nftContract, uint256 itemId)
-        public
-        payable
-        nonReentrant
-    {
-        uint256 price = marketItemById[itemId].price;
-        uint256 tokenId = marketItemById[itemId].tokenId;
+    /**
+     * @dev Buys a TNT721 token from the marketplace items.
+     */
+    function buy(uint256 _id) external payable nonReentrant whenNotPaused {
+        Item memory item = itemsById[_id];
+
+        // item must be open for sale
+        require(item.status == "Open", "Item is not for sale.");
+
+        // buyer must send item price
+        require(msg.value >= item.price, "You should pay the asked price");
+
+        // calculate fee
+        uint256 fee = (item.price / 100) * marketFee;
+
+        // pay seller
+        bool sent = _pay(item.seller, (item.price - fee));
+
+        // payment must be successful
+        require(sent, "Failed to send tfuel to the seller");
+
+        // transfer token to new owner
+        ITNT721(item.tokenContract).transferFrom(
+            address(this),
+            msg.sender,
+            item.tokenId
+        );
+
+        // update item status
+        itemsById[_id].status = "Sold";
+        itemsById[_id].price = 0;
+
+        // emit event
+        emit MarketChange(
+            _id,
+            item.seller,
+            item.tokenContract,
+            item.tokenId,
+            0,
+            "Sold"
+        );
+    }
+
+    /**
+     * @dev Cancels a marketplace item and return it to seller
+     */
+    function cancel(uint256 _id) external nonReentrant whenNotPaused {
+        Item memory item = itemsById[_id];
 
         require(
-            msg.value == price,
-            "Please submit the asking price in order to complete the purchase"
+            msg.sender == item.seller,
+            "Item can only be cancelled by seller"
         );
 
-        uint256 fee = (price * _marketFee) / 100;
+        require(item.status == "Open", "Item is already sold or cancelled");
 
-        marketItemById[itemId].seller.transfer(msg.value - fee);
-        payable(_marketOwner).transfer(fee);
+        ITNT721(item.tokenContract).transferFrom(
+            address(this),
+            item.seller,
+            item.tokenId
+        );
 
-        ITNT721(nftContract).transferFrom(address(this), msg.sender, tokenId);
-        marketItemById[itemId].seller = payable(msg.sender);
-        marketItemById[itemId].sold = true;
+        itemsById[_id].status = "Cancelled";
+        itemsById[_id].price = 0;
 
-        _soldItems.increment();
-
-        emit Buy(itemId, nftContract, tokenId, msg.sender, price, true);
+        emit MarketChange(
+            _id,
+            item.seller,
+            item.tokenContract,
+            item.tokenId,
+            0,
+            "Cancelled"
+        );
     }
 
-    // returns item by id
-    function itemById(uint256 itemId)
-        public
-        view
-        returns (MarketplaceItem memory)
+    /**
+     * @dev Update a marketplace item price.
+     */
+    function update(uint256 _id, uint256 _price)
+        external
+        nonReentrant
+        whenNotPaused
     {
-        return marketItemById[itemId];
+        Item memory item = itemsById[_id];
+
+        require(
+            msg.sender == item.seller,
+            "Item can only be changed by seller"
+        );
+
+        require(item.status == "Open", "Item is already sold or cancelled");
+
+        itemsById[_id].price = _price;
+
+        emit MarketChange(
+            _id,
+            item.seller,
+            item.tokenContract,
+            item.tokenId,
+            _price,
+            "Open"
+        );
+    }
+
+    function _payout(address payable to, uint256 amount)
+        external
+        onlyOwner
+        whenNotPaused
+    {
+        bool sent = _pay(to, amount);
+        require(sent, "Failed to send tfuel to the address");
+    }
+
+    /**
+     * @dev Pays the receiver the selected amount of TFUEL.
+     */
+    function _pay(address payable to, uint256 amount) internal returns (bool) {
+        (bool sent, ) = to.call{value: amount}("");
+        return sent;
     }
 }
