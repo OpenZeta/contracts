@@ -25,6 +25,15 @@ async function deploy(artifact, args) {
   return result;
 }
 
+async function test(add, artifact) {
+  const contract = new thetajs.Contract(add, artifact.abi, wallet);
+
+  const result = await contract.getInterfaceID();
+
+  console.log(result);
+  return;
+}
+
 async function main() {
   const artifact = await read_artifact(argv.artifact);
   const result = await deploy(artifact, argv.args);
@@ -35,6 +44,8 @@ async function main() {
                 Gas used:             ${result.gas_used}
   --------------------------------------------------------------------------------------------
   `);
+
+  const c = await test(result.contract_address, artifact);
 }
 
 main()

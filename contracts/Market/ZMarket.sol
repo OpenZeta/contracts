@@ -9,6 +9,9 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 
 contract ZMarket is ReentrancyGuard, Ownable, Pausable {
+    bytes4 private constant _INTERFACE_ID_ZMARKET = 0xc28144be;
+    bytes4 private constant _INTERFACE_ID_TNT165 = 0x01ffc9a7;
+
     // minimum price for a sale
     uint256 public minPrice;
 
@@ -30,9 +33,6 @@ contract ZMarket is ReentrancyGuard, Ownable, Pausable {
     // mapping of seller to item
     mapping(address => uint256[]) private itemsBySeller;
 
-    // mapping of seller to contract
-    mapping(address => uint256[]) private itemsByTokenContract;
-
     // items counter
     uint256 public itemsCounter;
 
@@ -53,6 +53,19 @@ contract ZMarket is ReentrancyGuard, Ownable, Pausable {
     }
 
     /**
+     * @dev Implementation of the TNT165 interface
+     */
+    function supportsInterface(bytes4 interfaceID)
+        external
+        pure
+        returns (bool)
+    {
+        return
+            interfaceID == _INTERFACE_ID_TNT165 ||
+            interfaceID == _INTERFACE_ID_ZMARKET;
+    }
+
+    /**
      * @dev Returns the details for a marketplace item.
      */
     function getItem(uint256 _id) external view returns (Item memory) {
@@ -60,6 +73,7 @@ contract ZMarket is ReentrancyGuard, Ownable, Pausable {
     }
 
     /**
+     * (optional)
      * @dev Returns all items of an address
      */
     function getItemsOfAddress(address _addr)
@@ -71,17 +85,6 @@ contract ZMarket is ReentrancyGuard, Ownable, Pausable {
     }
 
     /**
-     * @dev Returns all items of a contract
-     */
-    function getItemsOfContract(address _addr)
-        external
-        view
-        returns (uint256[] memory)
-    {
-        return itemsByTokenContract[_addr];
-    }
-
-    /**
      * @dev Put a TNT721 token for sale.
      */
     function sell(
@@ -89,7 +92,7 @@ contract ZMarket is ReentrancyGuard, Ownable, Pausable {
         uint256 tokenId,
         uint256 price
     ) external nonReentrant whenNotPaused {
-        require(price > minPrice, "Price must be at least 10 tfuel");
+        require(price >= minPrice, "Price must be at least 10 tfuel");
 
         // put item in escrow
         ITNT721(tokenContract).transferFrom(msg.sender, address(this), tokenId);
@@ -105,9 +108,6 @@ contract ZMarket is ReentrancyGuard, Ownable, Pausable {
 
         // add item to seller
         itemsBySeller[msg.sender].push(itemsCounter);
-
-        // add item to token contract
-        itemsByTokenContract[tokenContract].push(itemsCounter);
 
         itemsCounter += 1;
 
@@ -152,7 +152,6 @@ contract ZMarket is ReentrancyGuard, Ownable, Pausable {
 
         // update item status
         itemsById[_id].status = "Sold";
-        itemsById[_id].price = 0;
 
         // emit event
         emit MarketChange(
@@ -185,7 +184,6 @@ contract ZMarket is ReentrancyGuard, Ownable, Pausable {
         );
 
         itemsById[_id].status = "Cancelled";
-        itemsById[_id].price = 0;
 
         emit MarketChange(
             _id,
@@ -198,6 +196,7 @@ contract ZMarket is ReentrancyGuard, Ownable, Pausable {
     }
 
     /**
+     * (optional)
      * @dev Update a marketplace item price.
      */
     function update(uint256 _id, uint256 _price)
