@@ -162,7 +162,7 @@ contract ZMarket is ReentrancyGuard, Ownable, Pausable {
             msg.sender,
             item.tokenContract,
             item.tokenId,
-            0,
+            item.price,
             "Sold"
         );
     }
@@ -194,7 +194,7 @@ contract ZMarket is ReentrancyGuard, Ownable, Pausable {
             address(0),
             item.tokenContract,
             item.tokenId,
-            0,
+            item.price,
             "Cancelled"
         );
     }
