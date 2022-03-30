@@ -40,6 +40,7 @@ contract ZMarket is ReentrancyGuard, Ownable, Pausable {
     event MarketChange(
         uint256 id,
         address seller,
+        address buyer,
         address tokenContract,
         uint256 tokenId,
         uint256 price,
@@ -115,6 +116,7 @@ contract ZMarket is ReentrancyGuard, Ownable, Pausable {
         emit MarketChange(
             itemsCounter - 1,
             msg.sender,
+            address(0),
             tokenContract,
             tokenId,
             price,
@@ -157,6 +159,7 @@ contract ZMarket is ReentrancyGuard, Ownable, Pausable {
         emit MarketChange(
             _id,
             item.seller,
+            msg.sender,
             item.tokenContract,
             item.tokenId,
             0,
@@ -188,6 +191,7 @@ contract ZMarket is ReentrancyGuard, Ownable, Pausable {
         emit MarketChange(
             _id,
             item.seller,
+            address(0),
             item.tokenContract,
             item.tokenId,
             0,
@@ -218,6 +222,7 @@ contract ZMarket is ReentrancyGuard, Ownable, Pausable {
         emit MarketChange(
             _id,
             item.seller,
+            address(0),
             item.tokenContract,
             item.tokenId,
             _price,
