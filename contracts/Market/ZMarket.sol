@@ -49,7 +49,7 @@ contract ZMarket is ReentrancyGuard, Ownable, Pausable {
 
     constructor() {
         itemsCounter = 0;
-        minPrice = 10 ether;
+        minPrice = 1 ether;
         marketFee = 4;
     }
 
@@ -93,7 +93,7 @@ contract ZMarket is ReentrancyGuard, Ownable, Pausable {
         uint256 tokenId,
         uint256 price
     ) external nonReentrant whenNotPaused {
-        require(price >= minPrice, "Price must be at least 10 tfuel");
+        require(price >= minPrice, "Price must be at least 3 tfuel");
 
         // put item in escrow
         ITNT721(tokenContract).transferFrom(msg.sender, address(this), tokenId);
@@ -178,6 +178,7 @@ contract ZMarket is ReentrancyGuard, Ownable, Pausable {
             "Item can only be cancelled by seller"
         );
 
+        // item must be open for sale
         require(item.status == "Open", "Item is already sold or cancelled");
 
         ITNT721(item.tokenContract).transferFrom(
@@ -208,6 +209,8 @@ contract ZMarket is ReentrancyGuard, Ownable, Pausable {
         nonReentrant
         whenNotPaused
     {
+        require(_price >= minPrice, "Price must be at least 3 tfuel");
+
         Item memory item = itemsById[_id];
 
         require(
@@ -217,6 +220,7 @@ contract ZMarket is ReentrancyGuard, Ownable, Pausable {
 
         require(item.status == "Open", "Item is already sold or cancelled");
 
+        
         itemsById[_id].price = _price;
 
         emit MarketChange(
