@@ -19,7 +19,6 @@ contract ZNFT is TNT721 {
     ) TNT721(name, symbol) {
         _creator = msg.sender;
         _collectionURI = collectionURI_;
-        setApprovalForAll(0x2Ee6480c6FD8b71F0a6877baE97991e8d6062F4d, true);
 
         _registerInterface(_INTERFACE_ID_ZNFT);
     }
