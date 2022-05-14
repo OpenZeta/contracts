@@ -31,33 +31,6 @@ contract ZNFT is TNT721 {
         _;
     }
 
-    // Mint one token for address
-
-    function mint(address to, string memory uri) public onlyCreator {
-        uint256 mintIndex = totalSupply();
-        _safeMint(to, mintIndex);
-        _setTokenURI(mintIndex, uri);
-    }
-
-    // Mint one token for sender
-    function mint(string memory uri) external onlyCreator {
-        mint(msg.sender, uri);
-    }
-
-    // Mint many tokens for address
-    function mint(address to, string[] memory uris) external onlyCreator {
-        for (uint256 i = 0; i < uris.length; i++) {
-            mint(to, uris[i]);
-        }
-    }
-
-    // Mint many tokens for sender
-    function mint(string[] memory uris) external onlyCreator {
-        for (uint256 i = 0; i < uris.length; i++) {
-            mint(msg.sender, uris[i]);
-        }
-    }
-
     // return contract creator
     function creator() public view returns (address) {
         return _creator;
@@ -66,5 +39,20 @@ contract ZNFT is TNT721 {
     // return contract collection URI
     function collectionURI() public view returns (string memory) {
         return _collectionURI;
+    }
+
+    // mint one token to one address
+    function mint(address to, string memory uri) public onlyCreator {
+        uint256 index = totalSupply();
+        _safeMint(to, index);
+        _setTokenURI(index, uri);
+    }
+
+    // update contract collection URI
+    function updateCollectionURI(string memory collectionURI_)
+        public
+        onlyCreator
+    {
+        _collectionURI = collectionURI_;
     }
 }
