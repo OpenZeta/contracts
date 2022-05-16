@@ -17,6 +17,9 @@ contract ZMarket is ReentrancyGuard, Ownable, Pausable {
 
     // market fee percentage
     uint8 public marketFee;
+    
+    // event if market fee is modified
+    event MarketFeeChange(uint8 previousFee, uint8 newFee);
 
     // interface of the marketplace item
     struct Item {
@@ -51,6 +54,8 @@ contract ZMarket is ReentrancyGuard, Ownable, Pausable {
         itemsCounter = 0;
         minPrice = 1 ether;
         marketFee = 4;
+
+        emit MarketFeeChange(0, marketFee);
     }
 
     /**
@@ -93,7 +98,7 @@ contract ZMarket is ReentrancyGuard, Ownable, Pausable {
         uint256 tokenId,
         uint256 price
     ) external nonReentrant whenNotPaused {
-        require(price >= minPrice, "Price must be at least 3 tfuel");
+        require(price >= minPrice, "Price must be at least 1 tfuel");
 
         // put item in escrow
         ITNT721(tokenContract).transferFrom(msg.sender, address(this), tokenId);
@@ -209,7 +214,7 @@ contract ZMarket is ReentrancyGuard, Ownable, Pausable {
         nonReentrant
         whenNotPaused
     {
-        require(_price >= minPrice, "Price must be at least 3 tfuel");
+        require(_price >= minPrice, "Price must be at least 1 tfuel");
 
         Item memory item = itemsById[_id];
 
@@ -220,7 +225,6 @@ contract ZMarket is ReentrancyGuard, Ownable, Pausable {
 
         require(item.status == "Open", "Item is already sold or cancelled");
 
-        
         itemsById[_id].price = _price;
 
         emit MarketChange(
@@ -234,11 +238,44 @@ contract ZMarket is ReentrancyGuard, Ownable, Pausable {
         );
     }
 
-    function _payout(address payable to, uint256 amount)
-        external
-        onlyOwner
-        whenNotPaused
-    {
+    /**
+     * @dev Owner can cancel any marketplace item and return it to seller
+     */
+    function _cancel(uint256 _id) external onlyOwner {
+        Item memory item = itemsById[_id];
+
+        // item must be open for sale
+        require(item.status == "Open", "Item is already sold or cancelled");
+
+        ITNT721(item.tokenContract).transferFrom(
+            address(this),
+            item.seller,
+            item.tokenId
+        );
+
+        itemsById[_id].status = "Cancelled";
+
+        emit MarketChange(
+            _id,
+            item.seller,
+            address(0),
+            item.tokenContract,
+            item.tokenId,
+            item.price,
+            "Cancelled"
+        );
+    }
+
+
+
+    function _updateMarketFee(uint8 fee) external onlyOwner {
+        require(fee <= 100, "Market fee cannot be more than 100");
+        address oldMarketFee = marketFee;
+        marketFee = fee
+        emit MarketFeeChange(oldMarketFee, marketFee);
+    }
+
+    function _payout(address payable to, uint256 amount) external onlyOwner {
         bool sent = _pay(to, amount);
         require(sent, "Failed to send tfuel to the address");
     }
